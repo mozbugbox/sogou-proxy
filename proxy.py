@@ -121,8 +121,9 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.remote.sendall(self.requestline.encode("ascii") + b"\r\n")
 
     def remote_send_headers(self):
-        self.remote.sendall(str(self.headers))
-        self.remote.sendall("\r\n")
+        # self.headers is a rfc822.Message which has a headers attribute
+        header_text = "\r\n".join([x.rstrip("\r\n") for x in self.headers.headers]) + "\r\n"*2
+        self.remote.sendall(header_text)
 
     def remote_send_postdata(self):
         if self.command == "POST":
