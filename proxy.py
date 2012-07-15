@@ -156,8 +156,9 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def local_write_line(self):
         # Reply to the browser
-        self.wfile.write("HTTP/1.1 {0:>s} {1:>s}\r\n{2:>s}\r\n".format(str(self.http_response.status),
-            self.http_response.reason, "".join(self.http_response.msg.headers)))
+        header_text = "\r\n".join([x.rstrip("\r\n") for x in self.http_response.msg.headers]) + "\r\n"*2
+        self.wfile.write("HTTP/1.1 {0:>s} {1:>s}\r\n{2:>s}".format(
+            str(self.http_response.status), self.http_response.reason, header_text) )
 
     def build_local_response(self):
         self.http_response = httplib.HTTPResponse(self.remote, method=self.command)
