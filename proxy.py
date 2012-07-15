@@ -217,7 +217,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
             description="Forward HTTP/HTTPS traffic to SoGou Proxy servers.")
     parser.add_argument("-i", "--ip", action="store",
-            help="IP of local network interface for the proxy to bind")
+            help=("IP address of local network interface for the proxy. "
+                "Use '-i \"\"' to listen on all the local interfaces."))
     parser.add_argument("-p", "--port", action="store",
             help="Port for the proxy to listen to")
     type_str = ", ".join([x[0] for x in SERVER_TYPES])
@@ -236,7 +237,7 @@ def main():
     args = parse_args()
 
     # Set default values here.
-    listen_ip = "" # All the interfaces
+    listen_ip = "127.0.0.1"
     listen_port = 8083
     server_type = SERVER_TYPES[0]
 
