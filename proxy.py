@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 # modified from http://xiaoxia.org/2011/11/14/update-sogou-proxy-program-with-https-support/
+__version__ = "0.1"
 
 import httplib
 import logging
@@ -210,15 +211,51 @@ class ThreadingHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer
     pass
 
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(
+            description="Forward HTTP/HTTPS traffic to SoGou Proxy servers.")
+    parser.add_argument("-i", "--ip", action="store",
+            help="IP of local network interface for the proxy to bind")
+    parser.add_argument("-p", "--port", action="store",
+            help="Port for the proxy to listen to")
+    type_str = ", ".join([x[0] for x in SERVER_TYPES])
+    parser.add_argument("-t", "--server-type", action="store",
+            help="Proxy type: [{}]".format(type_str))
+    parser.add_argument("-D", "--debug", action="store_true",
+            help="Debug run")
+    parser.add_argument("--version", action="version",
+            version="%(prog)s {}".format(__version__))
+    args = parser.parse_args()
+    return args
+
 def main():
     logging.basicConfig(level=logging.ERROR, format="%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s",
         datefmt="%m-%d %H:%M:%S", stream=sys.stderr)
+    args = parse_args()
 
-    config_file = ConfigParser.RawConfigParser()
-    config_file.read("%s.ini" % os.path.splitext(__file__)[0])
-    listen_ip = config_file.get("listen", "ip")
-    listen_port = config_file.getint("listen", "port")
-    server_type = SERVER_TYPES[config_file.getint("run", "type")]
+    # Set default values here.
+    listen_ip = "" # All the interfaces
+    listen_port = 8083
+    server_type = SERVER_TYPES[0]
+
+    config_file_path = "%s.ini" % os.path.splitext(__file__)[0]
+    if os.path.exists(config_file_path):
+        config_file = ConfigParser.RawConfigParser()
+        config_file.read(config_file_path)
+        listen_ip = config_file.get("listen", "ip")
+        listen_port = config_file.getint("listen", "port")
+        server_type = SERVER_TYPES[config_file.getint("run", "type")]
+
+    if args.ip is not None:
+        listen_ip = args.ip
+    if args.port is not None:
+        listen_port = int(args.port)
+    if args.server_type is not None:
+        for t in SERVER_TYPES:
+            if t[0] == args.server_type.lower():
+                server_type = t
+
     ProxyInfo.host = "h%d.%s.bj.ie.sogou.com" % (random.randint(0, server_type[1]), server_type[0])
 
     server = ThreadingHTTPServer((listen_ip, listen_port), Handler)
