@@ -161,7 +161,11 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
             str(self.http_response.status), self.http_response.reason, header_text) )
 
     def build_local_response(self):
-        self.http_response = httplib.HTTPResponse(self.remote, method=self.command)
+        debuglevel = 0
+        if self.server.config["debug"]:
+            debuglevel = 1
+        self.http_response = httplib.HTTPResponse(self.remote,
+                method=self.command, debuglevel=debuglevel)
         try:
             self.http_response.begin()
         except socket.error, e:
@@ -258,9 +262,15 @@ def main():
             if t[0] == args.server_type.lower():
                 server_type = t
 
+    config = vars(args)
+    config["ip"] = listen_ip
+    config["port"] = listen_port
+    config["server_type"] = server_type
+
     ProxyInfo.host = "h%d.%s.bj.ie.sogou.com" % (random.randint(0, server_type[1]), server_type[0])
 
     server = ThreadingHTTPServer((listen_ip, listen_port), Handler)
+    server.config = config
 
     print "Sogou Proxy\nRunning on %s\nListening on %s:%d" % (ProxyInfo.host, listen_ip, listen_port)
     try:
