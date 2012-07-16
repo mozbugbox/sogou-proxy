@@ -119,11 +119,15 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.headers["X-Sogou-Tag"] = calc_sogou_hash(self.headers["X-Sogou-Timestamp"], self.headers["Host"])
 
     def remote_send_requestline(self):
-        self.remote.sendall(self.requestline.encode("ascii") + b"\r\n")
+        content = self.requestline.encode("ascii") + b"\r\n"
+        logging.debug("request: {}".format(repr(content)))
+        self.remote.sendall(content)
 
     def remote_send_headers(self):
         # self.headers is a rfc822.Message which has a headers attribute
         header_text = "\r\n".join([x.rstrip("\r\n") for x in self.headers.headers]) + "\r\n"*2
+        for line in header_text.split("\n")[:-1]:
+            logging.debug("reqest: {}".format(repr(line+"\n")))
         self.remote.sendall(header_text)
 
     def remote_send_postdata(self):
@@ -236,9 +240,12 @@ def parse_args():
     return args
 
 def main():
-    logging.basicConfig(level=logging.ERROR, format="%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s",
-        datefmt="%m-%d %H:%M:%S", stream=sys.stderr)
     args = parse_args()
+    log_level = logging.ERROR
+    if args.debug:
+        log_level = logging.DEBUG
+    logging.basicConfig(level=log_level, format="%(asctime)-15s %(name)-8s %(levelname)-8s %(message)s",
+        datefmt="%m-%d %H:%M:%S", stream=sys.stderr)
 
     # Set default values here.
     listen_ip = "127.0.0.1"
