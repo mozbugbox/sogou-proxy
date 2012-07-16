@@ -278,6 +278,8 @@ def main():
 
     server = ThreadingHTTPServer((listen_ip, listen_port), Handler)
     server.config = config
+    if hasattr(server, "daemon_threads"):
+        server.daemon_threads = True
 
     print "Sogou Proxy\nRunning on %s\nListening on %s:%d" % (ProxyInfo.host, listen_ip, listen_port)
     try:
