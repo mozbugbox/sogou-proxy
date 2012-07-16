@@ -120,16 +120,18 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def remote_send_requestline(self):
         content = self.requestline.encode("ascii") + b"\r\n"
-        logging.debug("request: {}".format(repr(content)))
+        logging.debug("request {}: {}".format(self.ident, repr(content)))
         self.remote.sendall(content)
 
     def remote_send_headers(self):
         # self.headers is a rfc822.Message which has a headers attribute
         self.headers["Connection"] = "close"
         del self.headers["Proxy-Connection"]
-        header_text = "\r\n".join([x.rstrip("\r\n") for x in self.headers.headers]) + "\r\n"*2
-        for line in header_text.split("\n")[:-1]:
-            logging.debug("reqest: {}".format(repr(line+"\n")))
+        header_text = "\r\n".join(
+                [x.rstrip("\r\n") for x in self.headers.headers]) + "\r\n"*2
+        if self.server.config["debug"]:
+            for line in header_text.split("\n")[:-1]:
+                logging.debug("request {}: {}".format(self.ident, repr(line+"\n")))
         self.remote.sendall(header_text)
 
     def remote_send_postdata(self):
@@ -192,6 +194,7 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         if 'Host' not in self.headers:
             self.send_error(httplib.BAD_REQUEST, "Host field missing in HTTP request headers.")
             return
+        self.ident = id(self.remote) # current proxy request identification
         self.add_sogou_header()
         self.remote_send_requestline()
         self.remote_send_headers()
