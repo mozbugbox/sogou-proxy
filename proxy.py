@@ -164,18 +164,24 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def local_write_line(self):
         # Reply to the browser
+        http_resp = self.http_response
+        if self.server.config["debug"]:
+            reply = "HTTP/{:.1f} {} {}".format(http_resp.version/10.0,
+                    http_resp.status, http_resp.reason)
+            logging.debug("Response {}: {}".format(self.ident, reply))
+            for k, v in http_resp.getheaders():
+                logging.debug("Response {}: {}: {}".format(self.ident, k, v))
+
         self.http_response.msg["Connection"] = "close"
         del self.http_response.msg["Proxy-Connection"]
+
         header_text = "\r\n".join([x.rstrip("\r\n") for x in self.http_response.msg.headers]) + "\r\n"*2
         self.wfile.write("HTTP/1.1 {0:>s} {1:>s}\r\n{2:>s}".format(
             str(self.http_response.status), self.http_response.reason, header_text) )
 
     def build_local_response(self):
-        debuglevel = 0
-        if self.server.config["debug"]:
-            debuglevel = 1
         self.http_response = httplib.HTTPResponse(self.remote,
-                method=self.command, debuglevel=debuglevel)
+                method=self.command)
         try:
             self.http_response.begin()
         except socket.error, e:
