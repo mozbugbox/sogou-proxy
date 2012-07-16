@@ -125,6 +125,8 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def remote_send_headers(self):
         # self.headers is a rfc822.Message which has a headers attribute
+        self.headers["Connection"] = "close"
+        del self.headers["Proxy-Connection"]
         header_text = "\r\n".join([x.rstrip("\r\n") for x in self.headers.headers]) + "\r\n"*2
         for line in header_text.split("\n")[:-1]:
             logging.debug("reqest: {}".format(repr(line+"\n")))
@@ -160,6 +162,8 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def local_write_line(self):
         # Reply to the browser
+        self.http_response.msg["Connection"] = "close"
+        del self.http_response.msg["Proxy-Connection"]
         header_text = "\r\n".join([x.rstrip("\r\n") for x in self.http_response.msg.headers]) + "\r\n"*2
         self.wfile.write("HTTP/1.1 {0:>s} {1:>s}\r\n{2:>s}".format(
             str(self.http_response.status), self.http_response.reason, header_text) )
