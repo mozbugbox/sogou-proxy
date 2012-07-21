@@ -1,0 +1,17 @@
+#!/bin/sh
+
+APP_NAME="sogou-proxy"
+VERSION=`date +%Y%m%d`
+PACKAGE_NAME="${APP_NAME}-${VERSION}"
+
+FILES="proxy.ini \
+       proxy.py \
+       README.md \
+      "
+set -x
+rm -rf ${PACKAGE_NAME}
+mkdir ${PACKAGE_NAME}
+ln -t ${PACKAGE_NAME} ${FILES}
+git log > ${PACKAGE_NAME}/ChangeLog
+/bin/tar -acf ${PACKAGE_NAME}.tar.xz ${PACKAGE_NAME}
+
