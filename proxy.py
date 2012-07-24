@@ -187,6 +187,10 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         except socket.error, e:
             logging.exception(e.message)
 
+    def add_forward_header(self):
+        if self.server.config["send_forward_header"]:
+            self.headers["X-Forwarded-For"] = self.server.proxy_forward_ip
+
     def proxy(self):
         if self.command == "POST" and "Content-Length" not in self.headers:
             self.send_error(httplib.BAD_REQUEST, "POST method without Content-Length header!")
@@ -202,6 +206,7 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
             return
         self.ident = id(self.remote) # current proxy request identification
         self.add_sogou_header()
+        self.add_forward_header()
         self.remote_send_requestline()
         self.remote_send_headers()
         self.remote_send_postdata()
@@ -232,6 +237,14 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 class ThreadingHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     pass
 
+def get_forward_ip():
+    """synthesize a valid forward IP"""
+    base = '220.181.1'
+    v1 = random.randint(0, 54)
+    v2 = random.randint(0, 254)
+    proxy_forward_ip = "{}{}.{}".format(base, v1, v2)
+    return proxy_forward_ip
+
 def load_config(config):
     """config: a dict for config options."""
     sys_config_file = "%s.ini" % os.path.splitext(__file__)[0]
@@ -248,6 +261,8 @@ def load_config(config):
     config["ip"] = config_file.get("listen", "ip")
     config["port"] = config_file.getint("listen", "port")
     config["server_type"] = SERVER_TYPES[config_file.getint("run", "type")]
+    config["send_forward_header"] = config_file.getboolean(
+            "run", "send_forward_header")
 
 def parse_args():
     import argparse
@@ -261,6 +276,8 @@ def parse_args():
     type_str = ", ".join([x[0] for x in SERVER_TYPES])
     parser.add_argument("-t", "--server-type", action="store",
             help="Proxy type: [{}]".format(type_str))
+    parser.add_argument("-f", "--forward-header", action="store_true",
+            help="Add X-Forwarded-For header")
     parser.add_argument("-D", "--debug", action="store_true",
             help="Debug run")
     parser.add_argument("--version", action="version",
@@ -276,12 +293,14 @@ def main():
     logging.basicConfig(level=log_level,
             format="%(asctime)-14s %(levelname)s: %(message)s",
             datefmt="%m-%d %H:%M:%S", stream=sys.stderr)
+    logging.debug("args: {}".format(args))
 
     config = {}
     # Set default values here.
     config["ip"]= "127.0.0.1"
-    config["port"] = 8083
+    config["port"] = "8083"
     config["server_type"] = SERVER_TYPES[0]
+    config["send_forward_header"] = "False"
 
     load_config(config)
 
@@ -294,8 +313,10 @@ def main():
         for t in SERVER_TYPES:
             if t[0] == args.server_type.lower():
                 config["server_type"] = t
+    if args.forward_header:
+        config["send_forward_header"] = True
 
-
+    logging.debug("config: {}".format(config))
     server_type = config["server_type"]
     ProxyInfo.host = "h%d.%s.bj.ie.sogou.com" % (random.randint(0, server_type[1]), server_type[0])
 
@@ -305,6 +326,10 @@ def main():
         server.daemon_threads = True
 
     print "Sogou Proxy:\n  Running on %s\n  Listening on %s:%d" % (ProxyInfo.host, config["ip"], config["port"])
+    if config["send_forward_header"]:
+        server.proxy_forward_ip = get_forward_ip()
+        print("  Forwarded IP {}".format(server.proxy_forward_ip))
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
