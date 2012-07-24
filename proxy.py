@@ -304,7 +304,7 @@ def main():
     if hasattr(server, "daemon_threads"):
         server.daemon_threads = True
 
-    print "Sogou Proxy\nRunning on %s\nListening on %s:%d" % (ProxyInfo.host, listen_ip, listen_port)
+    print "Sogou Proxy:\n  Running on %s\n  Listening on %s:%d" % (ProxyInfo.host, config["ip"], config["port"])
     try:
         server.serve_forever()
     except KeyboardInterrupt:
