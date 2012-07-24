@@ -254,7 +254,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    log_level = logging.ERROR
+    log_level = logging.INFO
     if args.debug:
         log_level = logging.DEBUG
     logging.basicConfig(level=log_level,
