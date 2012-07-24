@@ -227,9 +227,9 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         except socket.timeout:
             self.send_error(httplib.GATEWAY_TIMEOUT)
         except socket.error, e:
-            pass
-        except Exception:
-            logging.exception("Exception")
+            logging.exception("socket error: {}".format(e.message))
+        except Exception, e:
+            logging.exception("Exception {}".format(e))
 
     do_HEAD = do_POST = do_GET = do_CONNECT = do_PUT = do_DELETE = do_OPTIONS = do_TRACE = do_proxy
 
