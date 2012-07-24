@@ -232,6 +232,22 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
 class ThreadingHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     pass
 
+def load_config(config):
+    """config: a dict for config options."""
+    sys_config_file = "%s.ini" % os.path.splitext(__file__)[0]
+    # ~/.config/sogou-proxy/proxy.ini
+    home_config_path = os.path.join("$HOME", ".config", "sogou-proxy",
+            os.path.basename(sys_config_file))
+    home_config_path = os.path.expandvars(home_config_path)
+    config_path_list = [sys_config_file, home_config_path]
+    config_file = ConfigParser.RawConfigParser(config)
+    valid_config_files = config_file.read(config_path_list)
+    for config_file_path in valid_config_files:
+        logging.info("Load config file at {}".format(config_file_path))
+
+    config["ip"] = config_file.get("listen", "ip")
+    config["port"] = config_file.getint("listen", "port")
+    config["server_type"] = SERVER_TYPES[config_file.getint("run", "type")]
 
 def parse_args():
     import argparse
@@ -261,36 +277,29 @@ def main():
             format="%(asctime)-14s %(levelname)s: %(message)s",
             datefmt="%m-%d %H:%M:%S", stream=sys.stderr)
 
+    config = {}
     # Set default values here.
-    listen_ip = "127.0.0.1"
-    listen_port = 8083
-    server_type = SERVER_TYPES[0]
+    config["ip"]= "127.0.0.1"
+    config["port"] = 8083
+    config["server_type"] = SERVER_TYPES[0]
 
-    config_file_path = "%s.ini" % os.path.splitext(__file__)[0]
-    if os.path.exists(config_file_path):
-        config_file = ConfigParser.RawConfigParser()
-        config_file.read(config_file_path)
-        listen_ip = config_file.get("listen", "ip")
-        listen_port = config_file.getint("listen", "port")
-        server_type = SERVER_TYPES[config_file.getint("run", "type")]
+    load_config(config)
 
+    config["debug"] = args.debug
     if args.ip is not None:
-        listen_ip = args.ip
+        config["ip"] = args.ip
     if args.port is not None:
-        listen_port = int(args.port)
+        config["port"] = int(args.port)
     if args.server_type is not None:
         for t in SERVER_TYPES:
             if t[0] == args.server_type.lower():
-                server_type = t
+                config["server_type"] = t
 
-    config = vars(args)
-    config["ip"] = listen_ip
-    config["port"] = listen_port
-    config["server_type"] = server_type
 
+    server_type = config["server_type"]
     ProxyInfo.host = "h%d.%s.bj.ie.sogou.com" % (random.randint(0, server_type[1]), server_type[0])
 
-    server = ThreadingHTTPServer((listen_ip, listen_port), Handler)
+    server = ThreadingHTTPServer((config["ip"], config["port"]), Handler)
     server.config = config
     if hasattr(server, "daemon_threads"):
         server.daemon_threads = True
