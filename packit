@@ -1,17 +1,32 @@
 #!/bin/sh
-
+# To pack with current date as version label, do:
+#     ./packit -d 
 APP_NAME="sogou-proxy"
-VERSION=`date +%Y%m%d`
-PACKAGE_NAME="${APP_NAME}-${VERSION}"
-
 FILES="proxy.ini \
        proxy.py \
        README.md \
       "
+
+if [ "x$1" = "x-d" ] ; then 
+    ISDATE=true
+    VERSION=`date +%Y%m%d`
+else
+    VERSION=$(/bin/grep "^__version__ =" proxy.py | /bin/sed 's/.*=\s*"\([^"]*\)"/\1/')
+fi
+
+PACKAGE_NAME="${APP_NAME}-${VERSION}"
+
 set -x
-rm -rf ${PACKAGE_NAME}
-mkdir ${PACKAGE_NAME}
-ln -t ${PACKAGE_NAME} ${FILES}
+/bin/rm -rf ${PACKAGE_NAME}
+/bin/mkdir ${PACKAGE_NAME}
+/bin/cp -t ${PACKAGE_NAME} ${FILES}
+
+if [ -n "${ISDATE}" ] ; then
+    VERSION_PATTERN="s/^__version__ = .*$/__version__ = \"${VERSION}\"/"
+    /bin/sed -i "${VERSION_PATTERN}" ${PACKAGE_NAME}/proxy.py
+fi
+
 git log > ${PACKAGE_NAME}/ChangeLog
 /bin/tar -acf ${PACKAGE_NAME}.tar.xz ${PACKAGE_NAME}
+echo "Package generated at: ${PACKAGE_NAME}.tar.xz"
 
