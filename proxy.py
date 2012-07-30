@@ -187,6 +187,22 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         except socket.error, e:
             logging.exception(e.message)
 
+    def set_remote_cork(self, on=True):
+        """Set TCP_CORK option for remote write connection"""
+        if not hasattr(socket, "TCP_CORK"):return
+        action = 1
+        if not on:
+            action = 0
+        self.remote.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, action)
+
+    def set_local_cork(self, on=True):
+        """Set TCP_CORK option for locale write connection"""
+        if not hasattr(socket, "TCP_CORK"):return
+        action = 1
+        if not on:
+            action = 0
+        self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_CORK, action)
+
     def add_forward_header(self):
         if self.server.config["send_forward_header"]:
             self.headers["X-Forwarded-For"] = self.server.proxy_forward_ip
@@ -207,10 +223,16 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.ident = id(self.remote) # current proxy request identification
         self.add_sogou_header()
         self.add_forward_header()
+
+        self.set_remote_cork(True)
         self.remote_send_requestline()
         self.remote_send_headers()
         self.remote_send_postdata()
+        self.set_remote_cork(False)
+
         self.build_local_response()
+
+        self.set_local_cork(True)
         self.local_write_line()
         if self.command == "CONNECT":
             if self.http_response.status == httplib.OK:
@@ -220,6 +242,8 @@ class Handler(BaseHTTPServer.BaseHTTPRequestHandler):
                     "CONNECT method but response with status code %d" % self.http_response.status)
         else:
             self.local_write_other()
+
+        self.set_local_cork(False)
 
     def do_proxy(self):
         try:
